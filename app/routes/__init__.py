@@ -1,0 +1,13 @@
+from .auth_routes import auth_bp
+# from .state_routes import state_bp
+from .hierarchy_routes import hierarchy_bp
+from .user_routes import user_bp
+from .attendance_routes import attendance_bp
+
+
+def register_routes(app):
+    app.register_blueprint(auth_bp, url_prefix="/auth")
+    # app.register_blueprint(state_bp, url_prefix="/admin/states")
+    app.register_blueprint(hierarchy_bp, url_prefix="/hierarchy")
+    app.register_blueprint(user_bp, url_prefix="/api/users")
+    app.register_blueprint(attendance_bp, url_prefix="/attendance")
