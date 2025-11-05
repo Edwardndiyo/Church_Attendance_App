@@ -3,6 +3,7 @@ from app.extensions import db
 from app.models.user import User, Role, Permission
 import click
 from flask.cli import with_appcontext
+import os
 
 app = create_app()
 
@@ -59,4 +60,6 @@ def bootstrap_roles():
     print("Bootstrap complete.")
 
 if __name__ == "__main__":
-    app.run()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+    # app.run()
