@@ -1,5 +1,5 @@
 from flask import Flask
-from .config.settings import Config
+from config import Config
 from .extensions import db, migrate, jwt, cors
 from .routes import register_routes
 import logging 
@@ -14,7 +14,9 @@ def create_app(config_object=None):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    cors.init_app(app)
+    # cors.init_app(app)
+    cors.init_app(app, resources={r"/*": {"origins": "*"}})
+
 
      # Initialize Swagger
     # Initialize Swagger
