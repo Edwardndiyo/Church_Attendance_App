@@ -16,13 +16,14 @@ attendance_bp = Blueprint("attendance", __name__)
 @swag_from({
     "tags": ["Attendance"],
     "summary": "Create attendance record",
-    "description": "Creates a new attendance record for a specified service type and hierarchy level (state, region, district, etc.).",
+    "description": "Creates a new attendance record for a specified service type and hierarchy level.",
     "parameters": [
         {
             "name": "body",
             "in": "body",
             "required": True,
             "schema": {
+                "type": "object",
                 "properties": {
                     "service_type": {"type": "string", "example": "Sunday Service"},
                     "state_id": {"type": "integer", "example": 1},
@@ -38,7 +39,7 @@ attendance_bp = Blueprint("attendance", __name__)
                     "youth_girls": {"type": "integer", "example": 25},
                     "children_boys": {"type": "integer", "example": 30},
                     "children_girls": {"type": "integer", "example": 28},
-                    "year": {"type": "integer", "example": 2025},
+                    "year": {"type": "integer", "example": 2025}
                 },
                 "required": ["service_type", "state_id", "region_id", "district_id", "month", "week", "year"]
             }
@@ -47,7 +48,15 @@ attendance_bp = Blueprint("attendance", __name__)
     "responses": {
         "201": {
             "description": "Attendance record created successfully",
-            "examples": {"application/json": {"id": 1, "service_type": "Sunday Service", "month": "October"}}
+            "examples": {
+                "application/json": {
+                    "id": 1,
+                    "service_type": "Sunday Service",
+                    "month": "October",
+                    "week": 1,
+                    "year": 2025
+                }
+            }
         },
         "400": {"description": "Invalid data provided"}
     }
@@ -56,6 +65,53 @@ def create_attendance():
     data = request.get_json() or {}
     attendance = attendance_controller.create_attendance(data)
     return jsonify(attendance.to_dict()), 201
+
+
+# @attendance_bp.route("/attendance", methods=["POST"])
+# @jwt_required()
+# @swag_from({
+#     "tags": ["Attendance"],
+#     "summary": "Create attendance record",
+#     "description": "Creates a new attendance record for a specified service type and hierarchy level (state, region, district, etc.).",
+#     "parameters": [
+#         {
+#             "name": "body",
+#             "in": "body",
+#             "required": True,
+#             "schema": {
+#                 "properties": {
+#                     "service_type": {"type": "string", "example": "Sunday Service"},
+#                     "state_id": {"type": "integer", "example": 1},
+#                     "region_id": {"type": "integer", "example": 2},
+#                     "district_id": {"type": "integer", "example": 3},
+#                     "group_id": {"type": "integer", "example": 4},
+#                     "old_group_id": {"type": "integer", "example": 5},
+#                     "month": {"type": "string", "example": "October"},
+#                     "week": {"type": "integer", "example": 1},
+#                     "men": {"type": "integer", "example": 45},
+#                     "women": {"type": "integer", "example": 60},
+#                     "youth_boys": {"type": "integer", "example": 20},
+#                     "youth_girls": {"type": "integer", "example": 25},
+#                     "children_boys": {"type": "integer", "example": 30},
+#                     "children_girls": {"type": "integer", "example": 28},
+#                     "year": {"type": "integer", "example": 2025},
+#                 },
+#                 "required": ["service_type", "state_id", "region_id", "district_id", "month", "week", "year"]
+#             }
+#         }
+#     ],
+#     "responses": {
+#         "201": {
+#             "description": "Attendance record created successfully",
+#             "examples": {"application/json": {"id": 1, "service_type": "Sunday Service", "month": "October"}}
+#         },
+#         "400": {"description": "Invalid data provided"}
+#     }
+# })
+# def create_attendance():
+#     data = request.get_json() or {}
+#     attendance = attendance_controller.create_attendance(data)
+#     return jsonify(attendance.to_dict()), 201
 
 @attendance_bp.route("/attendance/upload", methods=["POST"])
 @jwt_required()
