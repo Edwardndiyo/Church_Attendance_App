@@ -156,6 +156,51 @@ def refresh():
     access = create_access_token(identity=str(user_id))
     return jsonify({"access_token": access}), 200
 
+
+@auth_bp.route("/users/<int:user_id>", methods=["DELETE"])
+@jwt_required()
+def delete_user(user_id):
+    """
+    Delete a User
+    ---
+    tags:
+      - Users
+    description: Deletes a user by ID.
+    security:
+      - Bearer: []
+    parameters:
+      - in: path
+        name: user_id
+        required: true
+        type: integer
+    responses:
+      200:
+        description: User deleted successfully
+      404:
+        description: User not found
+      403:
+        description: Insufficient permissions
+    """
+    current_user = User.query.get(get_jwt_identity())
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Prevent self-deletion
+    if user.id == current_user.id:
+        return jsonify({"error": "You cannot delete your own account"}), 403
+
+    # Optionally, check hierarchy permissions
+    current_roles = [r.name for r in current_user.roles]
+    target_roles = [r.name for r in user.roles]
+    if "Super Admin" not in current_roles and "Super Admin" in target_roles:
+        return jsonify({"error": "Insufficient permissions to delete this user"}), 403
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": f"User {user.email} deleted successfully"}), 200
+
+
 @auth_bp.route("/me", methods=["GET"])
 @jwt_required()
 def me():

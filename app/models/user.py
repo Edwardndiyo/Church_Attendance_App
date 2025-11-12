@@ -69,32 +69,6 @@ class User(db.Model):
         }
 
 
-# class User(db.Model):
-#     __tablename__ = "users"
-
-#     id = db.Column(db.Integer, primary_key=True)
-#     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-#     name = db.Column(db.String(120), nullable=True)
-#     password_hash = db.Column(db.String(255), nullable=False)
-#     # keep is_active flag for soft-disable
-#     is_active = db.Column(db.Boolean, default=True)
-
-#     roles = db.relationship("Role", secondary=user_roles, back_populates="users")
-
-#     def set_password(self, password: str):
-#         self.password_hash = generate_password_hash(password)
-
-#     def check_password(self, password: str) -> bool:
-#         return check_password_hash(self.password_hash, password)
-
-#     def to_dict(self):
-#         return {
-#             "id": self.id,
-#             "email": self.email,
-#             "name": self.name,
-#             "is_active": self.is_active,
-#             "roles": [r.name for r in self.roles],
-#         }
 
 class Role(db.Model):
     __tablename__ = "roles"

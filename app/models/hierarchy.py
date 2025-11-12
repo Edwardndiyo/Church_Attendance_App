@@ -84,6 +84,11 @@ class Group(db.Model):
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
     district_id = db.Column(db.Integer, db.ForeignKey('districts.id'), nullable=False)
 
+    # Relationships
+    state = db.relationship('State', backref='groups', lazy=True)
+    region = db.relationship('Region', backref='groups', lazy=True)
+    district = db.relationship('District', backref='groups', lazy=True)
+
     old_groups = db.relationship('OldGroup', backref='group', lazy=True)
 
     def __repr__(self):
@@ -112,6 +117,12 @@ class OldGroup(db.Model):
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
     district_id = db.Column(db.Integer, db.ForeignKey('districts.id'), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
+
+    # Relationships
+    state = db.relationship('State', backref='old_groups', lazy=True)
+    region = db.relationship('Region', backref='old_groups', lazy=True)
+    district = db.relationship('District', backref='old_groups', lazy=True)
+    group = db.relationship('Group', backref='old_groups_rel', lazy=True)
 
     def __repr__(self):
         return f"<OldGroup {self.name}>"
