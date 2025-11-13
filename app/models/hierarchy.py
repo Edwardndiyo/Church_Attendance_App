@@ -2,115 +2,71 @@ from app.extensions import db
 
 class State(db.Model):
     __tablename__ = 'states'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
     leader = db.Column(db.String(100), nullable=True)
-
     regions = db.relationship('Region', backref='state', lazy=True)
 
-    def __repr__(self):
-        return f"<State {self.name}>"
-
     def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "code": self.code,
-            "leader": self.leader
-        }
+        return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader}
 
 class Region(db.Model):
     __tablename__ = 'regions'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
     leader = db.Column(db.String(100), nullable=True)
-
     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
-    old_groups = db.relationship('OldGroup', backref='region', lazy=True)
-
-    def __repr__(self):
-        return f"<Region {self.name}>"
+    # FIXED: Use unique backref names
+    old_groups_rel = db.relationship('OldGroup', backref='region_rel', lazy=True)
+    districts_rel = db.relationship('District', backref='region_rel', lazy=True)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "code": self.code,
-            "leader": self.leader,
-            "state_id": self.state_id
-        }
+        return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id}
 
 class OldGroup(db.Model):
     __tablename__ = 'old_groups'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
     leader = db.Column(db.String(100), nullable=True)
-
     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
-    groups = db.relationship('Group', backref='old_group', lazy=True)
+    # FIXED: Use unique backref names
+    groups_rel = db.relationship('Group', backref='old_group_rel', lazy=True)
 
     state = db.relationship('State', backref='old_state_groups', lazy=True)
     region = db.relationship('Region', backref='old_region_groups', lazy=True)
 
-    def __repr__(self):
-        return f"<OldGroup {self.name}>"
-
     def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "code": self.code,
-            "leader": self.leader,
-            "state_id": self.state_id,
-            "region_id": self.region_id
-        }
+        return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id, "region_id": self.region_id}
 
 class Group(db.Model):
     __tablename__ = 'groups'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
     leader = db.Column(db.String(100), nullable=True)
-
     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
     old_group_id = db.Column(db.Integer, db.ForeignKey('old_groups.id'), nullable=False)
-    districts = db.relationship('District', backref='group', lazy=True)
+    # FIXED: Use unique backref names
+    districts_rel = db.relationship('District', backref='group_rel', lazy=True)
 
     state = db.relationship('State', backref='state_groups', lazy=True)
     region = db.relationship('Region', backref='region_groups', lazy=True)
-    old_group = db.relationship('OldGroup', back_populates='groups', lazy=True)
-
-    def __repr__(self):
-        return f"<Group {self.name}>"
+    old_group = db.relationship('OldGroup', back_populates='groups_rel', lazy=True)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "code": self.code,
-            "leader": self.leader,
-            "state_id": self.state_id,
-            "region_id": self.region_id,
-            "old_group_id": self.old_group_id
-        }
+        return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id, "region_id": self.region_id, "old_group_id": self.old_group_id}
 
 class District(db.Model):
     __tablename__ = 'districts'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
     leader = db.Column(db.String(100), nullable=True)
-
     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
     old_group_id = db.Column(db.Integer, db.ForeignKey('old_groups.id'), nullable=False)
@@ -119,24 +75,10 @@ class District(db.Model):
     state = db.relationship('State', backref='state_districts', lazy=True)
     region = db.relationship('Region', backref='region_districts', lazy=True)
     old_group = db.relationship('OldGroup', backref='old_group_districts', lazy=True)
-    group = db.relationship('Group', back_populates='districts', lazy=True)
-
-    def __repr__(self):
-        return f"<District {self.name}>"
+    group = db.relationship('Group', back_populates='districts_rel', lazy=True)
 
     def to_dict(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "code": self.code,
-            "leader": self.leader,
-            "state_id": self.state_id,
-            "region_id": self.region_id,
-            "old_group_id": self.old_group_id,
-            "group_id": self.group_id
-        }
-    
-
+        return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id, "region_id": self.region_id, "old_group_id": self.old_group_id, "group_id": self.group_id}
 
 
 # run on server after push  - 
