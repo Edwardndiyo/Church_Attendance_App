@@ -1,48 +1,28 @@
 from app.extensions import db
 
+# =========================
+# State
+# =========================
 class State(db.Model):
     __tablename__ = 'states'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
     leader = db.Column(db.String(100), nullable=True)
-    regions = db.relationship('Region', backref='state', lazy=True)
+
+    # Relationships
+    regions = db.relationship('Region', back_populates='state', lazy=True)
+    old_groups = db.relationship('OldGroup', back_populates='state', lazy=True)
+    groups = db.relationship('Group', back_populates='state', lazy=True)
+    districts = db.relationship('District', back_populates='state', lazy=True)
 
     def to_dict(self):
         return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader}
 
-# class Region(db.Model):
-#     __tablename__ = 'regions'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     code = db.Column(db.String(20), unique=True, nullable=False)
-#     leader = db.Column(db.String(100), nullable=True)
-#     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
-    
-#     # FIXED: Use back_populates instead of backref to avoid conflicts
-#     # old_groups = db.relationship('OldGroup', back_populates='region', lazy=True)
-#     districts = db.relationship('District', back_populates='region', lazy=True)
 
-#     def to_dict(self):
-#         return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id}
-
-# class OldGroup(db.Model):
-#     __tablename__ = 'old_groups'
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     code = db.Column(db.String(20), unique=True, nullable=False)
-#     leader = db.Column(db.String(100), nullable=True)
-#     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
-#     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
-    
-#     # FIXED: Use back_populates to match Region.old_groups
-#     groups = db.relationship('Group', back_populates='old_group', lazy=True)
-#     state = db.relationship('State', backref='old_state_groups', lazy=True)
-#     region = db.relationship('Region', backref='old_groups', lazy=True)  # FIXED: back_populates
-
-#     def to_dict(self):
-#         return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id, "region_id": self.region_id}
-
+# =========================
+# Region
+# =========================
 class Region(db.Model):
     __tablename__ = 'regions'
     id = db.Column(db.Integer, primary_key=True)
@@ -50,14 +30,20 @@ class Region(db.Model):
     code = db.Column(db.String(20), unique=True, nullable=False)
     leader = db.Column(db.String(100), nullable=True)
     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
-    
-    old_groups = db.relationship('OldGroup', back_populates='region', lazy=True)  # ✅ explicit
+
+    # Relationships
+    state = db.relationship('State', back_populates='regions')
+    old_groups = db.relationship('OldGroup', back_populates='region', lazy=True)
     districts = db.relationship('District', back_populates='region', lazy=True)
+    groups = db.relationship('Group', back_populates='region', lazy=True)
 
     def to_dict(self):
         return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id}
 
 
+# =========================
+# OldGroup
+# =========================
 class OldGroup(db.Model):
     __tablename__ = 'old_groups'
     id = db.Column(db.Integer, primary_key=True)
@@ -66,10 +52,12 @@ class OldGroup(db.Model):
     leader = db.Column(db.String(100), nullable=True)
     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
-    
+
+    # Relationships
+    state = db.relationship('State', back_populates='old_groups')
+    region = db.relationship('Region', back_populates='old_groups')
     groups = db.relationship('Group', back_populates='old_group', lazy=True)
-    state = db.relationship('State', backref='old_state_groups', lazy=True)
-    region = db.relationship('Region', back_populates='old_groups', lazy=True)  # ✅ match Region.old_groups
+    districts = db.relationship('District', back_populates='old_group', lazy=True)
 
     def to_dict(self):
         return {
@@ -82,6 +70,9 @@ class OldGroup(db.Model):
         }
 
 
+# =========================
+# Group
+# =========================
 class Group(db.Model):
     __tablename__ = 'groups'
     id = db.Column(db.Integer, primary_key=True)
@@ -91,16 +82,28 @@ class Group(db.Model):
     state_id = db.Column(db.Integer, db.ForeignKey('states.id'), nullable=False)
     region_id = db.Column(db.Integer, db.ForeignKey('regions.id'), nullable=False)
     old_group_id = db.Column(db.Integer, db.ForeignKey('old_groups.id'), nullable=False)
-    
-    # FIXED: Use back_populates
+
+    # Relationships
+    state = db.relationship('State', back_populates='groups')
+    region = db.relationship('Region', back_populates='groups')
+    old_group = db.relationship('OldGroup', back_populates='groups')
     districts = db.relationship('District', back_populates='group', lazy=True)
-    state = db.relationship('State', backref='state_groups', lazy=True)
-    region = db.relationship('Region', backref='region_groups', lazy=True)
-    old_group = db.relationship('OldGroup', back_populates='groups', lazy=True)  # FIXED: back_populates
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id, "region_id": self.region_id, "old_group_id": self.old_group_id}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "code": self.code,
+            "leader": self.leader,
+            "state_id": self.state_id,
+            "region_id": self.region_id,
+            "old_group_id": self.old_group_id
+        }
 
+
+# =========================
+# District
+# =========================
 class District(db.Model):
     __tablename__ = 'districts'
     id = db.Column(db.Integer, primary_key=True)
@@ -112,14 +115,23 @@ class District(db.Model):
     old_group_id = db.Column(db.Integer, db.ForeignKey('old_groups.id'), nullable=False)
     group_id = db.Column(db.Integer, db.ForeignKey('groups.id'), nullable=False)
 
-    state = db.relationship('State', backref='state_districts', lazy=True)
-    region = db.relationship('Region', back_populates='districts', lazy=True)  # FIXED: back_populates
-    old_group = db.relationship('OldGroup', backref='old_group_districts', lazy=True)
-    group = db.relationship('Group', back_populates='districts', lazy=True)  # FIXED: back_populates
+    # Relationships
+    state = db.relationship('State', back_populates='districts')
+    region = db.relationship('Region', back_populates='districts')
+    old_group = db.relationship('OldGroup', back_populates='districts')
+    group = db.relationship('Group', back_populates='districts')
 
     def to_dict(self):
-        return {"id": self.id, "name": self.name, "code": self.code, "leader": self.leader, "state_id": self.state_id, "region_id": self.region_id, "old_group_id": self.old_group_id, "group_id": self.group_id}
-
+        return {
+            "id": self.id,
+            "name": self.name,
+            "code": self.code,
+            "leader": self.leader,
+            "state_id": self.state_id,
+            "region_id": self.region_id,
+            "old_group_id": self.old_group_id,
+            "group_id": self.group_id
+        }
 
 
 # run on server after push  - 
