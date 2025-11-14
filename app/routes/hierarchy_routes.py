@@ -1,16 +1,20 @@
 # app/routes/hierarchy_routes.py
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models.hierarchy import State, Region, District, Group, OldGroup
 import pandas as pd
 from io import BytesIO
 from flasgger import swag_from
+from app.models.user import User
+from app.utils.access_control import require_role, restrict_by_access
+
 
 hierarchy_bp = Blueprint('hierarchy_bp', __name__)
 
 ### ---------- STATES ----------
 @hierarchy_bp.route('/states', methods=['GET'])
+@jwt_required()
 def get_states():
     """
     Get All States
@@ -35,16 +39,24 @@ def get_states():
               leader:
                 type: string
     """
-    states = State.query.all()
-    return jsonify([{
-        "id": s.id,
-        "name": s.name,
-        "code": s.code,
-        "leader": s.leader
-    } for s in states])
+
+    current_user = User.query.get(get_jwt_identity())
+    # states = State.query.all()
+    states = restrict_by_access(State.query, current_user).all()
+    return jsonify([s.to_dict() for s in states])
+
+    # return jsonify([{
+    #     "id": s.id,
+    #     "name": s.name,
+    #     "code": s.code,
+    #     "leader": s.leader
+    # } for s in states])
 
 @hierarchy_bp.route('/states', methods=['POST'])
+@jwt_required()
+@require_role(["super-admin"])
 def create_state():
+
     """
     Create a New State
     ---
@@ -86,6 +98,8 @@ def create_state():
 
 ### CSV upload for states
 @hierarchy_bp.route('/states/upload', methods=['POST'])
+@jwt_required()
+@require_role(["super-admin"])
 def upload_states():
     """
     Upload States (CSV or Excel)
@@ -119,6 +133,7 @@ def upload_states():
 
 @hierarchy_bp.route("/state/<int:id>", methods=["PUT"])
 @jwt_required()
+@require_role(["super-admin"])
 def update_state(id):
     """
     Update State
@@ -160,7 +175,9 @@ def update_state(id):
 
 
 @hierarchy_bp.route("/state/<int:id>", methods=["DELETE"])
+# @jwt_required()
 @jwt_required()
+@require_role(["super-admin"])
 def delete_state(id):
     """
     Delete State
@@ -189,6 +206,8 @@ def delete_state(id):
 
 ### ---------- REGIONS ----------
 @hierarchy_bp.route('/regions', methods=['POST'])
+@jwt_required()
+@require_role(["super-admin", "state-admin"])
 def create_region():
     """
     Create Region
@@ -223,6 +242,10 @@ def create_region():
       400:
         description: Invalid input data
     """
+    current_user = User.query.get(get_jwt_identity())
+    if current_user.role == "state-admin" and data["state_id"] != current_user.state_id:
+        return jsonify({"error": "You cannot create a region in another state"}), 403
+
     data = request.get_json()
     region = Region(
         name=data['name'],
@@ -246,18 +269,25 @@ def get_regions():
       200:
         description: List of regions
     """
-    regions = Region.query.all()
-    return jsonify([{
-        "id": r.id,
-        "name": r.name,
-        "code": r.code,
-        "leader": r.leader,
-        "state": r.state.name
-    } for r in regions])
+
+    current_user = User.query.get(get_jwt_identity())
+    regions = restrict_by_access(Region.query, current_user).all()
+
+    return jsonify([r.to_dict() for r in regions])
+    
+    # regions = Region.query.all()
+    # return jsonify([{
+    #     "id": r.id,
+    #     "name": r.name,
+    #     "code": r.code,
+    #     "leader": r.leader,
+    #     "state": r.state.name
+    # } for r in regions])
 
 
 @hierarchy_bp.route("/region/<int:id>", methods=["PUT"])
 @jwt_required()
+# @require_role(["super-admin", "state-admin"])
 def update_region(id):
     """
     Update Region
@@ -325,6 +355,8 @@ def delete_region(id):
 
 ### ---------- DISTRICTS ----------
 @hierarchy_bp.route('/districts', methods=['POST'])
+@jwt_required()
+@require_role(["super-admin", "state-admin", "region-admin"])
 def create_district():
     """
     Create a New District
@@ -353,6 +385,15 @@ def create_district():
       201:
         description: District created successfully
     """
+
+    current_user = User.query.get(get_jwt_identity())   
+
+    if current_user.state_id != data["state_id"]:
+        return jsonify({"error": "You cannot create a district outside your state"}), 403
+
+    if current_user.region_id not in (None, data["region_id"]):
+        return jsonify({"error": "You cannot create a district outside your region"}), 403
+
     data = request.get_json()
     district = District(
         name=data['name'],
@@ -368,6 +409,7 @@ def create_district():
     return jsonify({"message": "District created"}), 201
 
 @hierarchy_bp.route('/districts', methods=['GET'])
+@jwt_required()
 def get_districts():
     """
     Get All Districts
@@ -378,15 +420,20 @@ def get_districts():
       200:
         description: List of all districts
     """
-    districts = District.query.all()
-    return jsonify([{
-        "id": d.id,
-        "name": d.name,
-        "code": d.code,
-        "leader": d.leader,
-        "region": d.region.name,
-        "state": d.region.state.name
-    } for d in districts])
+
+    current_user = User.query.get(get_jwt_identity())
+    districts = restrict_by_access(District.query, current_user).all()
+
+    return jsonify([d.to_dict() for d in districts])
+    # districts = District.query.all()
+    # return jsonify([{
+    #     "id": d.id,
+    #     "name": d.name,
+    #     "code": d.code,
+    #     "leader": d.leader,
+    #     "region": d.region.name,
+    #     "state": d.region.state.name
+    # } for d in districts])
 
 @hierarchy_bp.route("/district/<int:id>", methods=["PUT"])
 @jwt_required()
@@ -453,6 +500,8 @@ def delete_district(id):
 
 ### ---------- GROUPS ----------
 @hierarchy_bp.route('/groups', methods=['POST'])
+@jwt_required()
+@require_role(["super-admin", "state-admin", "region-admin"])
 @swag_from({
     "tags": ["Groups"],
     "summary": "Create a new group",
@@ -468,7 +517,7 @@ def delete_district(id):
                     "group_name": {"type": "string", "example": "Calabar Admins"},
                     "state_id": {"type": "integer", "example": 1},
                     "region_id": {"type": "integer", "example": 2},
-                    "district_id": {"type": "integer", "example": 3},
+                    # "district_id": {"type": "integer", "example": 3},
                     "leader": {"type": "string", "example": "John Doe"},
                     "access_level": {"type": "string", "example": "state-admin"}
                 },
@@ -488,7 +537,7 @@ def delete_district(id):
                         "group_code": "GRP-CA",
                         "state_id": 1,
                         "region_id": 2,
-                        "district_id": 3,
+                        # "district_id": 3,
                         "leader": "John Doe",
                         "access_level": "state-admin"
                     }
@@ -500,6 +549,16 @@ def delete_district(id):
 })
 def create_group():
     data = request.get_json() or {}
+    current_user = User.query.get(get_jwt_identity())
+
+    # STATE ADMIN cannot create group in another state
+    if current_user.role == "state-admin" and data["state_id"] != current_user.state_id:
+        return jsonify({"error": "You are not allowed to create groups in another state"}), 403
+
+    # REGION ADMIN cannot create group in another region
+    if current_user.role == "region-admin" and data["region_id"] != current_user.region_id:
+        return jsonify({"error": "You cannot create groups in another region"}), 403
+
     
     required_fields = ["name", "state_id", "region_id", "old_group_id"]
     for field in required_fields:
@@ -529,6 +588,7 @@ def create_group():
 
 
 @hierarchy_bp.route('/groups', methods=['GET'])
+@jwt_required()
 @swag_from({
     "tags": ["Groups"],
     "summary": "List all groups",
@@ -553,16 +613,22 @@ def create_group():
     }
 })
 def get_groups():
-    groups = Group.query.all()
-    return jsonify([{
-        "id": g.id,
-        "name": g.name,
-        "code": g.code,
-        "leader": g.leader,
-        "district": g.district.name if g.district else None,
-        "region": g.region.name if g.region else None,
-        "state": g.state.name if g.state else None
-    } for g in groups])
+
+    current_user = User.query.get(get_jwt_identity())
+
+    groups = restrict_by_access(Group.query, current_user).all()
+
+    return jsonify([g.to_dict() for g in groups])
+    # groups = Group.query.all()
+    # return jsonify([{
+    #     "id": g.id,
+    #     "name": g.name,
+    #     "code": g.code,
+    #     "leader": g.leader,
+    #     "district": g.district.name if g.district else None,
+    #     "region": g.region.name if g.region else None,
+    #     "state": g.state.name if g.state else None
+    # } for g in groups])
 
 
 # ---------------------------
@@ -667,7 +733,7 @@ def create_oldgroup():
         }
     }), 201
 
-### --@hierarchy_bp.route('/oldgroups/<int:id>', methods=['PUT'])
+@hierarchy_bp.route('/oldgroups/<int:id>', methods=['PUT'])
 @swag_from({
     "tags": ["Old Groups"],
     "summary": "Update an Old Group",
