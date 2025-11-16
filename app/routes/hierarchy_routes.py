@@ -386,32 +386,73 @@ def create_district():
               type: integer
             region_id:
               type: integer
+            old_group_id:
+                type: integer
+            group_id:
+                type: integer
+
+
     responses:
       201:
         description: District created successfully
     """
 
-    current_user = User.query.get(get_jwt_identity())   
+    data = request.get_json()
+    current_user = User.query.get(get_jwt_identity())
 
-    if current_user.state_id != data["state_id"]:
+    # State Admin restriction
+    if current_user.has_role("state admin") and current_user.state_id != data.get("state_id"):
         return jsonify({"error": "You cannot create a district outside your state"}), 403
 
-    if current_user.region_id not in (None, data["region_id"]):
+    # Region Admin restriction  
+    if current_user.has_role("region admin") and current_user.region_id not in (None, data.get("region_id")):
         return jsonify({"error": "You cannot create a district outside your region"}), 403
 
-    data = request.get_json()
+    # Validate required fields
+    required_fields = ["name", "code", "state_id", "region_id"]
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"error": f"Missing required field '{field}'"}), 400
+
     district = District(
         name=data['name'],
         code=data['code'],
         leader=data.get('leader'),
         state_id=data['state_id'],
         region_id=data['region_id'],
-        old_group_id=data['old_group_id'],
-        group_id=data['group_id']
+        old_group_id=data.get('old_group_id'),
+        group_id=data.get('group_id')
     )
+    
     db.session.add(district)
     db.session.commit()
+    
     return jsonify({"message": "District created"}), 201
+
+
+    # data = request.get_json()
+
+    # current_user = User.query.get(get_jwt_identity())   
+
+    # if current_user.state_id != data["state_id"]:
+    #     return jsonify({"error": "You cannot create a district outside your state"}), 403
+
+    # if current_user.region_id not in (None, data["region_id"]):
+    #     return jsonify({"error": "You cannot create a district outside your region"}), 403
+
+    # # data = request.get_json()
+    # district = District(
+    #     name=data['name'],
+    #     code=data['code'],
+    #     leader=data.get('leader'),
+    #     state_id=data['state_id'],
+    #     region_id=data['region_id'],
+    #     old_group_id=data['old_group_id'],
+    #     group_id=data['group_id']
+    # )
+    # db.session.add(district)
+    # db.session.commit()
+    # return jsonify({"message": "District created"}), 201
 
 @hierarchy_bp.route('/districts', methods=['GET'])
 @jwt_required()
