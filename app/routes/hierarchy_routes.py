@@ -682,7 +682,7 @@ def get_groups():
         "name": g.name,
         "code": g.code,
         "leader": g.leader,
-        "district": g.district.name if g.district else None,
+        # "district": g.district.name if g.district else None,
         "region": g.region.name if g.region else None,
         "state": g.state.name if g.state else None
     } for g in groups])
