@@ -40,17 +40,19 @@ def get_states():
                 type: string
     """
 
-    current_user = User.query.get(get_jwt_identity())
+    user_id = get_jwt_identity()  # ADD THIS
+    current_user = User.query.get(user_id)  # ADD THIS
+    # current_user = User.query.get(get_jwt_identity())
     # states = State.query.all()
     states = restrict_by_access(State.query, current_user).all()
-    return jsonify([s.to_dict() for s in states])
+    # return jsonify([s.to_dict() for s in states])
 
-    # return jsonify([{
-    #     "id": s.id,
-    #     "name": s.name,
-    #     "code": s.code,
-    #     "leader": s.leader
-    # } for s in states])
+    return jsonify([{
+        "id": s.id,
+        "name": s.name,
+        "code": s.code,
+        "leader": s.leader
+    } for s in states])
 
 @hierarchy_bp.route('/states', methods=['POST'])
 @jwt_required()
@@ -258,6 +260,7 @@ def create_region():
     return jsonify({"message": "Region created"}), 201
 
 @hierarchy_bp.route('/regions', methods=['GET'])
+@jwt_required()
 def get_regions():
     """
     Get All Regions
@@ -270,19 +273,21 @@ def get_regions():
         description: List of regions
     """
 
-    current_user = User.query.get(get_jwt_identity())
+    # current_user = User.query.get(get_jwt_identity())
+    user_id = get_jwt_identity()  # ADD THIS
+    current_user = User.query.get(user_id)  # ADD THIS
     regions = restrict_by_access(Region.query, current_user).all()
 
-    return jsonify([r.to_dict() for r in regions])
+    # return jsonify([r.to_dict() for r in regions])
     
     # regions = Region.query.all()
-    # return jsonify([{
-    #     "id": r.id,
-    #     "name": r.name,
-    #     "code": r.code,
-    #     "leader": r.leader,
-    #     "state": r.state.name
-    # } for r in regions])
+    return jsonify([{
+        "id": r.id,
+        "name": r.name,
+        "code": r.code,
+        "leader": r.leader,
+        "state": r.state.name
+    } for r in regions])
 
 
 @hierarchy_bp.route("/region/<int:id>", methods=["PUT"])
@@ -421,19 +426,21 @@ def get_districts():
         description: List of all districts
     """
 
-    current_user = User.query.get(get_jwt_identity())
+    # current_user = User.query.get(get_jwt_identity())
+    user_id = get_jwt_identity()  # ADD THIS
+    current_user = User.query.get(user_id)  # ADD THIS
     districts = restrict_by_access(District.query, current_user).all()
 
-    return jsonify([d.to_dict() for d in districts])
+    # return jsonify([d.to_dict() for d in districts])
     # districts = District.query.all()
-    # return jsonify([{
-    #     "id": d.id,
-    #     "name": d.name,
-    #     "code": d.code,
-    #     "leader": d.leader,
-    #     "region": d.region.name,
-    #     "state": d.region.state.name
-    # } for d in districts])
+    return jsonify([{
+        "id": d.id,
+        "name": d.name,
+        "code": d.code,
+        "leader": d.leader,
+        "region": d.region.name,
+        "state": d.region.state.name
+    } for d in districts])
 
 @hierarchy_bp.route("/district/<int:id>", methods=["PUT"])
 @jwt_required()
@@ -614,21 +621,23 @@ def create_group():
 })
 def get_groups():
 
-    current_user = User.query.get(get_jwt_identity())
+    # current_user = User.query.get(get_jwt_identity())
+    user_id = get_jwt_identity()  # ADD THIS
+    current_user = User.query.get(user_id)  # ADD THIS
 
     groups = restrict_by_access(Group.query, current_user).all()
 
-    return jsonify([g.to_dict() for g in groups])
+    # return jsonify([g.to_dict() for g in groups])
     # groups = Group.query.all()
-    # return jsonify([{
-    #     "id": g.id,
-    #     "name": g.name,
-    #     "code": g.code,
-    #     "leader": g.leader,
-    #     "district": g.district.name if g.district else None,
-    #     "region": g.region.name if g.region else None,
-    #     "state": g.state.name if g.state else None
-    # } for g in groups])
+    return jsonify([{
+        "id": g.id,
+        "name": g.name,
+        "code": g.code,
+        "leader": g.leader,
+        "district": g.district.name if g.district else None,
+        "region": g.region.name if g.region else None,
+        "state": g.state.name if g.state else None
+    } for g in groups])
 
 
 # ---------------------------
@@ -863,6 +872,7 @@ def delete_oldgroup(id):
 
 
 @hierarchy_bp.route('/oldgroups/<int:id>', methods=['GET'])
+# @jwt_required()
 @swag_from({
     "tags": ["Old Groups"],
     "summary": "Get a single Old Group",
@@ -908,6 +918,7 @@ def get_oldgroup(id):
         # REMOVED: group, district references
     }), 200
 @hierarchy_bp.route('/oldgroups', methods=['GET'])
+@jwt_required()
 @swag_from({
     "tags": ["Old Groups"],
     "summary": "Get old groups",
@@ -931,7 +942,12 @@ def get_oldgroup(id):
     },
 })
 def get_oldgroups():
-    oldgroups = OldGroup.query.all()
+
+    user_id = get_jwt_identity()  # ADD THIS
+    current_user = User.query.get(user_id)  # ADD THIS
+
+    oldgroups = restrict_by_access(OldGroup.query, current_user).all()
+    # oldgroups = OldGroup.query.all()
     return jsonify([{
         "id": o.id,
         "name": o.name,

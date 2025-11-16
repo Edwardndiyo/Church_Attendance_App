@@ -42,27 +42,53 @@ def require_role(allowed_roles):
 # -----------------------------
 # HIERARCHY ACCESS ENFORCEMENT
 # -----------------------------
-def restrict_by_access(user, obj):
-    """Ensure user can only access data inside their assigned hierarchy."""
 
-    # Super Admin = full access
-    role_names = [r.name.lower() for r in user.roles]
-    if "super admin" in role_names:
-        return True
+def restrict_by_access(query, user):
+    # Check if user is actually a User object or a Query object
+    if hasattr(user, 'roles'):
+        # It's a User object - proceed normally
+        role_names = [r.name.lower() for r in user.roles]
+        
+        if "super admin" in role_names:
+            return query  # Super Admin sees everything
+        
+        elif "state admin" in role_names and user.state_id:
+            return query.filter_by(state_id=user.state_id)
+        
+        elif "regional admin" in role_names and user.region_id:
+            return query.filter_by(region_id=user.region_id)
+        
+        elif "district admin" in role_names and user.district_id:
+            return query.filter_by(district_id=user.district_id)
+        
+        else:
+            return query.none()  # No access
+    
+    else:
+        # If user is not a User object (might be Query or something else),
+        # return the query unchanged for now
+        return query
+# def restrict_by_access(user, obj):
+#     """Ensure user can only access data inside their assigned hierarchy."""
 
-    # Restrict by state
-    if user.state_id and hasattr(obj, "state_id") and obj.state_id != user.state_id:
-        return False
+#     # Super Admin = full access
+#     role_names = [r.name.lower() for r in user.roles]
+#     if "super admin" in role_names:
+#         return True
 
-    # Restrict by region
-    if user.region_id and hasattr(obj, "region_id") and obj.region_id != user.region_id:
-        return False
+#     # Restrict by state
+#     if user.state_id and hasattr(obj, "state_id") and obj.state_id != user.state_id:
+#         return False
 
-    # Restrict by district
-    if user.district_id and hasattr(obj, "district_id") and obj.district_id != user.district_id:
-        return False
+#     # Restrict by region
+#     if user.region_id and hasattr(obj, "region_id") and obj.region_id != user.region_id:
+#         return False
 
-    return True
+#     # Restrict by district
+#     if user.district_id and hasattr(obj, "district_id") and obj.district_id != user.district_id:
+#         return False
+
+#     return True
 
 
 def get_current_user():
