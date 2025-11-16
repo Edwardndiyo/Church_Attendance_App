@@ -41,9 +41,9 @@ def create_app(config_object=None):
     app = Flask(__name__)
     app.config.from_object(config_object or Config)
 
-    setup_roles_on_startup(app)
+    
 
-    app.json_encoder = CustomJSONProvider(app)
+    
 
     # init extensions
     db.init_app(app)
@@ -51,6 +51,9 @@ def create_app(config_object=None):
     jwt.init_app(app)
     # cors.init_app(app)
     cors.init_app(app, resources={r"/*": {"origins": "*"}})
+    app.json_encoder = CustomJSONProvider(app)
+
+    setup_roles_on_startup(app)
 
 
      # Initialize Swagger
