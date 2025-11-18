@@ -1,0 +1,42 @@
+from datetime import datetime
+from app.models import Attendance, State, Region, District, Group, OldGroup
+
+CURRENT_YEAR = datetime.utcnow().year
+CURRENT_MONTH = datetime.utcnow().strftime("%B")  # e.g. January
+CURRENT_WEEK = datetime.utcnow().isocalendar().week % 4 or 4
+
+def get_last_attendance_week(entity_type, entity_id):
+    """Return the last week for which the entity submitted attendance."""
+    query = Attendance.query.filter_by(
+        year=CURRENT_YEAR,
+        month=CURRENT_MONTH
+    )
+
+    if entity_type == "state":
+        query = query.filter_by(state_id=entity_id)
+    elif entity_type == "region":
+        query = query.filter_by(region_id=entity_id)
+    elif entity_type == "district":
+        query = query.filter_by(district_id=entity_id)
+    elif entity_type == "group":
+        query = query.filter_by(group_id=entity_id)
+    elif entity_type == "old_group":
+        query = query.filter_by(old_group_id=entity_id)
+
+    last_record = query.order_by(Attendance.week.desc()).first()
+    return last_record.week if last_record else 0
+   
+
+def get_attendance_status(last_filled_week):
+    """Return status type: red/yellow/green"""
+    if last_filled_week == 0:
+        return "red"
+
+    missing = CURRENT_WEEK - last_filled_week
+
+    if missing >= 5:
+        return "red"
+    elif missing >= 1:
+        return "yellow"
+    else:
+        return "green"

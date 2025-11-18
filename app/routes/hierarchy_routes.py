@@ -244,11 +244,19 @@ def create_region():
       400:
         description: Invalid input data
     """
+    data = request.get_json()  # ✅ Move this FIRST
     current_user = User.query.get(get_jwt_identity())
-    if current_user.has_role("Super Admin") and data["state_id"] != current_user.state_id:
+
+    # Validate required fields
+    required_fields = ["name", "code", "state_id"]
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"error": f"Missing required field '{field}'"}), 400
+
+    # Fix the logic: State Admin (NOT Super Admin) should be restricted
+    if current_user.has_role("State Admin") and data["state_id"] != current_user.state_id:
         return jsonify({"error": "You cannot create a region in another state"}), 403
 
-    data = request.get_json()
     region = Region(
         name=data['name'],
         code=data['code'],
@@ -258,6 +266,22 @@ def create_region():
     db.session.add(region)
     db.session.commit()
     return jsonify({"message": "Region created"}), 201
+
+
+    # current_user = User.query.get(get_jwt_identity())
+    # if current_user.has_role("Super Admin") and data["state_id"] != current_user.state_id:
+    #     return jsonify({"error": "You cannot create a region in another state"}), 403
+
+    # data = request.get_json()
+    # region = Region(
+    #     name=data['name'],
+    #     code=data['code'],
+    #     leader=data.get('leader'),
+    #     state_id=data['state_id']
+    # )
+    # db.session.add(region)
+    # db.session.commit()
+    # return jsonify({"message": "Region created"}), 201
 
 @hierarchy_bp.route('/regions', methods=['GET'])
 @jwt_required()
