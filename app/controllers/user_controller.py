@@ -234,6 +234,7 @@ def update_user(user_id):
     data = request.get_json()
     user = User.query.get_or_404(user_id)
 
+    # Update basic fields
     user.name = data.get("name", user.name)
     user.email = data.get("email", user.email)
     user.phone = data.get("phone", user.phone)
@@ -244,14 +245,46 @@ def update_user(user_id):
     user.region_id = data.get("region_id", user.region_id)
     user.district_id = data.get("district_id", user.district_id)
 
-    # Reassign roles if provided
+    # Enhanced role assignment - accepts both IDs and names
     if "roles" in data:
-        role_ids = data["roles"]
-        roles = Role.query.filter(Role.id.in_(role_ids)).all()
-        user.roles = roles
+        role_input = data["roles"]
+        
+        if not role_input:  # Empty array
+            user.roles = []
+        elif isinstance(role_input[0], int):  # Array of IDs [1, 2, 3]
+            roles = Role.query.filter(Role.id.in_(role_input)).all()
+            user.roles = roles
+        elif isinstance(role_input[0], str):  # Array of names ["State Admin", "Region Admin"]
+            roles = Role.query.filter(Role.name.in_(role_input)).all()
+            user.roles = roles
+        else:
+            return jsonify({"error": "Roles must be an array of IDs (integers) or names (strings)"}), 400
 
     db.session.commit()
     return jsonify({"message": "User updated successfully", "user": user.to_dict()}), 200
+
+    
+    # data = request.get_json()
+    # user = User.query.get_or_404(user_id)
+
+    # user.name = data.get("name", user.name)
+    # user.email = data.get("email", user.email)
+    # user.phone = data.get("phone", user.phone)
+    # user.is_active = data.get("is_active", user.is_active)
+
+    # # Update hierarchy
+    # user.state_id = data.get("state_id", user.state_id)
+    # user.region_id = data.get("region_id", user.region_id)
+    # user.district_id = data.get("district_id", user.district_id)
+
+    # # Reassign roles if provided
+    # if "roles" in data:
+    #     role_ids = data["roles"]
+    #     roles = Role.query.filter(Role.id.in_(role_ids)).all()
+    #     user.roles = roles
+
+    # db.session.commit()
+    # return jsonify({"message": "User updated successfully", "user": user.to_dict()}), 200
 
 
 def list_users():

@@ -12,7 +12,9 @@ Notes:
 - Controllers are responsible for input validation and response shaping.
 """
 
-from flask import Blueprint
+from flask import Blueprint, jsonify
+
+from app.models.user import Role
 from ..controllers import user_controller
 from flask_jwt_extended import jwt_required
 
@@ -39,3 +41,21 @@ user_bp.route("/", methods=["POST"])(jwt_required()(user_controller.create_user)
 # appropriate.
 # Protection: JWT required - authenticated requests only.
 user_bp.route("/<int:user_id>", methods=["PUT"])(jwt_required()(user_controller.update_user))
+
+
+@user_bp.route("/roles", methods=["GET"])
+# @jwt_required()
+def get_roles():
+    """
+    Get all available roles with IDs and names
+    ---
+    tags:
+      - Users
+    responses:
+      200:
+        description: List of roles
+    """
+    roles = Role.query.all()
+    roles_data = [{"id": role.id, "name": role.name, "description": role.description} for role in roles]
+    
+    return jsonify(roles_data), 200
