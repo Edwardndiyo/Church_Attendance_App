@@ -9,7 +9,45 @@ from io import BytesIO
 from flasgger import swag_from
 from app.models.user import User
 from app.models.youth_attendance import YouthAttendance
-from app.utils.access_control import require_role, restrict_by_access
+from app.utils.access_control import require_role ##,restrict_by_access
+
+# TEMPORARY: Replace the import with this inline function
+def restrict_by_access(query, user):
+    """
+    INLINE VERSION - Guaranteed to be used
+    """
+    print(f"🎯 INLINE restrict_by_access CALLED")
+    print(f"🎯 User: {user.id}, Roles: {[r.name for r in user.roles]}")
+    
+    if not user or not user.roles:
+        return query.filter_by(id=None)
+    
+    role_names = [r.name.lower() for r in user.roles]
+    print(f"🎯 Normalized roles: {role_names}")
+    
+    # Get model class
+    if not query._entities:
+        return query.filter_by(id=None)
+    
+    model_class = query._entities[0].type
+    print(f"🎯 Model: {model_class.__name__}")
+    
+    # GROUP ADMIN LOGIC
+    if "group admin" in role_names and user.group_id:
+        print(f"✅ EXECUTING GROUP ADMIN LOGIC")
+        
+        if model_class == Group:
+            print(f"✅ Returning user's group: {user.group_id}")
+            return query.filter(Group.id == user.group_id)
+        elif model_class == District:
+            print(f"✅ Returning districts in group: {user.group_id}")
+            return query.filter(District.group_id == user.group_id)
+        else:
+            print(f"❌ Unknown model for Group Admin: {model_class.__name__}")
+            return query.filter_by(id=None)
+    
+    print(f"❌ No Group Admin role found")
+    return query.filter_by(id=None)
 
 
 hierarchy_bp = Blueprint('hierarchy_bp', __name__)
@@ -729,8 +767,8 @@ def test_restrict_function():
             "result_count": restricted_district_query.count()
         }
     })
-    
-          
+
+
 
 @hierarchy_bp.route('/debug-access', methods=['GET'])
 @jwt_required()
