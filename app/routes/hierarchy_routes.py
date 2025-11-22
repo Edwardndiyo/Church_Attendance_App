@@ -570,6 +570,58 @@ def get_districts():
         "state": d.region.state.name
     } for d in districts])
 
+@hierarchy_bp.route('/debug-access', methods=['GET'])
+@jwt_required()
+def debug_access():
+    """
+    Debug access control endpoint, pass JWT access token of logged in user
+    ---
+    tags:
+      - Debug Access
+    responses:
+      200:
+        description: response with detailed access data of logged in user
+    """
+    user_id = get_jwt_identity()
+    current_user = User.query.get(user_id)
+    
+    if not current_user:
+        return jsonify({"error": "User not found"}), 404
+    
+    # Test with different models
+    models_to_test = [Group, District, State, Region, OldGroup]
+    results = {}
+    
+    for model in models_to_test:
+        try:
+            query = restrict_by_access(model.query, current_user)
+            results[model.__name__] = {
+                "query_type": type(query).__name__,
+                "is_none": query is None,
+                "count": query.count() if query is not None else "NONE"
+            }
+        except Exception as e:
+            results[model.__name__] = {
+                "error": str(e),
+                "query_type": "ERROR",
+                "is_none": True
+            }
+    
+    return jsonify({
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "roles": [r.name for r in current_user.roles],
+            "state_id": current_user.state_id,
+            "region_id": current_user.region_id,
+            "district_id": current_user.district_id,
+            "group_id": current_user.group_id,
+            "old_group_id": current_user.old_group_id
+        },
+        "access_test_results": results
+    })
+
+
 @hierarchy_bp.route("/district/<int:id>", methods=["PUT"])
 @jwt_required()
 def update_district(id):
