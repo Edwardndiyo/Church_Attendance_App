@@ -211,79 +211,87 @@ def require_role(allowed_roles):
 def restrict_by_access(query, user):
     """
     Restrict database query based on user's access level and complete hierarchy position.
-    Now supports: State → Region → District → Group → OldGroup
+    FIXED VERSION - Case insensitive role matching
     """
     if not user or not hasattr(user, 'roles'):
-        return query.filter_by(id=None)  # Return empty query, not None
+        return query.filter_by(id=None)
     
     try:
+        # Get role names (case insensitive)
         role_names = [r.name.lower() for r in user.roles]
+        print(f"🔍 User {user.id} has roles: {[r.name for r in user.roles]} (normalized: {role_names})")
+        print(f"🔍 User hierarchy: state={user.state_id}, region={user.region_id}, district={user.district_id}, group={user.group_id}, old_group={user.old_group_id}")
+        
+        # Get the model class from the query
+        if not query._entities:
+            return query.filter_by(id=None)
+        
+        model_class = query._entities[0].type
+        print(f"🔍 Query model: {model_class.__name__}")
         
         # 🎯 SUPER ADMIN - no restrictions
         if "super admin" in role_names:
-            print("🔓 Super Admin - no access restrictions applied")
+            print("🔓 Super Admin - full access")
             return query
-        
-        # Get the model class from the query
-        model_class = query._entities[0].type if query._entities else None
-        if not model_class:
-            return query.filter_by(id=None)
         
         # 🎯 STATE ADMIN - restrict to their state
         if "state admin" in role_names and user.state_id:
             print(f"🔐 State Admin - filtering by state_id: {user.state_id}")
             if hasattr(model_class, 'state_id'):
                 return query.filter(model_class.state_id == user.state_id)
-            # For models without state_id, check related hierarchy
-            elif hasattr(model_class, 'region_id'):
-                # Get regions in user's state and filter by those regions
-                state_regions = Region.query.filter_by(state_id=user.state_id).with_entities(Region.id).all()
-                region_ids = [r[0] for r in state_regions]
-                return query.filter(model_class.region_id.in_(region_ids))
-            else:
-                return query.filter_by(id=None)
         
         # 🎯 REGION ADMIN - restrict to their region
         elif "region admin" in role_names and user.region_id:
             print(f"🔐 Region Admin - filtering by region_id: {user.region_id}")
             if hasattr(model_class, 'region_id'):
                 return query.filter(model_class.region_id == user.region_id)
-            # For models without region_id, check related hierarchy
-            elif hasattr(model_class, 'district_id'):
-                # Get districts in user's region and filter by those districts
-                region_districts = District.query.filter_by(region_id=user.region_id).with_entities(District.id).all()
-                district_ids = [d[0] for d in region_districts]
-                return query.filter(model_class.district_id.in_(district_ids))
-            else:
-                return query.filter_by(id=None)
         
         # 🎯 DISTRICT ADMIN - restrict to their district
         elif "district admin" in role_names and user.district_id:
             print(f"🔐 District Admin - filtering by district_id: {user.district_id}")
             if hasattr(model_class, 'district_id'):
                 return query.filter(model_class.district_id == user.district_id)
-            # For models without district_id, check related hierarchy
-            elif hasattr(model_class, 'group_id'):
-                # Get groups in user's district and filter by those groups
-                district_groups = Group.query.filter_by(district_id=user.district_id).with_entities(Group.id).all()
-                group_ids = [g[0] for g in district_groups]
-                return query.filter(model_class.group_id.in_(group_ids))
-            else:
-                return query.filter_by(id=None)
         
-        # 🎯 GROUP ADMIN - restrict to their group
+        # 🎯 GROUP ADMIN - restrict to their group and related entities (CASE INSENSITIVE)
         elif "group admin" in role_names and user.group_id:
             print(f"🔐 Group Admin - filtering by group_id: {user.group_id}")
-            if hasattr(model_class, 'group_id'):
-                return query.filter(model_class.group_id == user.group_id)
-            # For models without group_id, check related hierarchy
-            elif hasattr(model_class, 'old_group_id'):
-                # Get old groups for user's group and filter by those old groups
+            
+            # For Group model - show only their group
+            if model_class == Group:
+                return query.filter(Group.id == user.group_id)
+            
+            # For District model - show districts in their group
+            elif model_class == District:
+                return query.filter(District.group_id == user.group_id)
+            
+            # For State model - show state of their group
+            elif model_class == State:
                 user_group = Group.query.get(user.group_id)
-                if user_group and user_group.old_group_id:
-                    return query.filter(model_class.old_group_id == user_group.old_group_id)
+                if user_group and user_group.state_id:
+                    return query.filter(State.id == user_group.state_id)
                 else:
                     return query.filter_by(id=None)
+            
+            # For Region model - show region of their group
+            elif model_class == Region:
+                user_group = Group.query.get(user.group_id)
+                if user_group and user_group.region_id:
+                    return query.filter(Region.id == user_group.region_id)
+                else:
+                    return query.filter_by(id=None)
+            
+            # For OldGroup model - show old group of their group
+            elif model_class == OldGroup:
+                user_group = Group.query.get(user.group_id)
+                if user_group and user_group.old_group_id:
+                    return query.filter(OldGroup.id == user_group.old_group_id)
+                else:
+                    return query.filter_by(id=None)
+            
+            # Default for other models with group_id
+            elif hasattr(model_class, 'group_id'):
+                return query.filter(model_class.group_id == user.group_id)
+            
             else:
                 return query.filter_by(id=None)
         
@@ -292,25 +300,19 @@ def restrict_by_access(query, user):
             print(f"🔐 Old Group Admin - filtering by old_group_id: {user.old_group_id}")
             if hasattr(model_class, 'old_group_id'):
                 return query.filter(model_class.old_group_id == user.old_group_id)
-            # For models without old_group_id, check related hierarchy
-            elif hasattr(model_class, 'group_id'):
-                # Get groups in user's old group and filter by those groups
-                old_group_groups = Group.query.filter_by(old_group_id=user.old_group_id).with_entities(Group.id).all()
-                group_ids = [g[0] for g in old_group_groups]
-                return query.filter(model_class.group_id.in_(group_ids))
-            else:
-                return query.filter_by(id=None)
         
-        # No matching role or missing hierarchy data - return empty query
-        else:
-            print("🚫 No valid role or hierarchy data - returning empty query")
-            return query.filter_by(id=None)
+        # No matching role or missing hierarchy data
+        print(f"🚫 No access - roles: {role_names}, user_id: {user.id}")
+        print(f"🚫 Looking for 'group admin' in: {role_names}")
+        return query.filter_by(id=None)
             
     except Exception as e:
         print(f"❌ Error in restrict_by_access: {e}")
-        return query.filter_by(id=None)  # Always return a query, not None
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        return query.filter_by(id=None)
+    
 
-        
 def get_current_user():
     """Get current user with eager loading of roles for performance"""
     user_id = get_jwt_identity()
