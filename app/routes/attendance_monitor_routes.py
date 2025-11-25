@@ -9,7 +9,7 @@ monitor_bp = Blueprint("monitor_bp", __name__)
 
 @monitor_bp.get("/monitor/attendance")
 @jwt_required()
-@require_role(["super admin", "state admin"])
+# @require_role(["super admin", "state admin"])
 @swag_from({
     "tags": ["Attendance Monitoring"],
     "summary": "Get attendance submission summary",
