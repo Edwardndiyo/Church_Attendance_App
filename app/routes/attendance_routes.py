@@ -394,6 +394,15 @@ def get_attendance():
     elif "Region Admin" in user_role_names:
         region_id = user.region_id  
         print(f"🔍 Regional Admin - filtering by region: {region_id}")
+
+    elif "Old Group Admin" in user_role_names:
+        old_group_id = user.old_group_id
+        print(f"🔍 Old Group Admin - filtering by old group: {old_group_id}")
+    
+    elif "Group Admin" in user_role_names:
+        group_id = user.group_id
+        old_group_id = user.old_group_id
+        print(f"🔍 Group Admin - filtering by group: {group_id} and old group: {old_group_id}")
     elif "District Admin" in user_role_names:
         district_id = user.district_id
         print(f"🔍 District Admin - filtering by district: {district_id}")
