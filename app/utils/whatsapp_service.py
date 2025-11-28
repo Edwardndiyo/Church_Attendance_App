@@ -20,8 +20,8 @@ class WhatsAppService:
             
             # Format phone number (add country code if needed)
             # Assuming Indian numbers - adjust as needed
-            if not to_phone.startswith('91') and len(to_phone) == 10:
-                to_phone = '91' + to_phone
+            # if to_phone.len(to_phone) == 10:
+            #     to_phone = '91' + to_phone
             
             payload = {
                 "messaging_product": "whatsapp",
