@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from app.controllers.attendance_monitor_controller import get_attendance_monitor_summary
 from app.controllers.reminder_controller import send_manual_reminders, send_targeted_reminders
 from app.models.hierarchy import Group, OldGroup, District, Region, State
@@ -211,45 +211,11 @@ def attendance_monitor():
     
     return jsonify(filtered_summary), 200
 
-    
-# @monitor_bp.get("/monitor/attendance")
-# @jwt_required()
-# # @require_role(["super admin", "state admin"])
-# @swag_from({
-#     "tags": ["Attendance Monitoring"],
-#     "summary": "Get attendance submission summary",
-#     "description": "Returns a summary of which states, regions, districts, groups, and old groups have submitted or not submitted attendance.",
-#     "security": [{"BearerAuth": []}],
-#     "responses": {
-#         200: {
-#             "description": "Attendance summary data",
-#             "examples": {
-#                 "application/json": {
-#                     "submitted": {
-#                         "states": ["Lagos", "Rivers"],
-#                         "regions": ["Region 1"],
-#                         "districts": ["District 4"],
-#                         "groups": ["Group A"]
-#                     },
-#                     "pending": {
-#                         "states": ["Abuja"],
-#                         "regions": ["Region 3"],
-#                         "districts": ["District 6"],
-#                         "groups": ["Group B"]
-#                     }
-#                 }
-#             }
-#         },
-#         403: {"description": "Unauthorized — role not allowed"},
-#     }
-# })
-# def attendance_monitor():
-#     return jsonify(get_attendance_monitor_summary()), 200
 
 
 @monitor_bp.post("/monitor/remind/<entity_type>")
 @jwt_required()
-@require_role(["super admin"])
+# @require_role(["super admin"])
 @swag_from({
     "tags": ["Reminders"],
     "summary": "Send manual attendance reminders",
@@ -277,13 +243,30 @@ def manual_remind(entity_type):
     if entity_type not in valid:
         return jsonify({"error": "Invalid entity type"}), 400
 
-    emails = send_manual_reminders(entity_type)
-    return jsonify({"sent_to": emails}), 200
+    # Get methods from request body (default to both)
+    data = request.get_json() or {}
+    methods = data.get('methods', ['email', 'whatsapp'])
+    
+    result = send_manual_reminders(entity_type, methods=methods)
+    return jsonify({
+        "sent_via": methods,
+        "failed_list": result['failed_list'],
+        "detailed_results": result['notification_results']
+    }), 200
+# def manual_remind(entity_type):
+#     valid = ["state", "region", "district", "group", "old_group"]
+#     if entity_type not in valid:
+#         return jsonify({"error": "Invalid entity type"}), 400
+
+#     emails = send_manual_reminders(entity_type)
+#     return jsonify({"sent_to": emails}), 200
+
+
 
 # NEW: Target-specific reminder
 @monitor_bp.post("/monitor/remind/<entity_type>/<entity_id>")
 @jwt_required()
-@require_role(["super admin"])
+# @require_role(["super admin"])
 @swag_from({
     "tags": ["Attendance Reminders"],
     "summary": "Send attendance reminder to a specific entity",
@@ -323,5 +306,22 @@ def targeted_remind(entity_type, entity_id):
     if entity_type not in valid:
         return jsonify({"error": "Invalid entity type"}), 400
 
-    emails = send_targeted_reminders(entity_type, entity_id)
-    return jsonify({"sent_to": emails}), 200
+    # Get methods from request body (default to both)
+    data = request.get_json() or {}
+    methods = data.get('methods', ['email', 'whatsapp'])
+    
+    results = send_targeted_reminders(entity_type, entity_id, methods=methods)
+    return jsonify({
+        "sent_via": methods,
+        "detailed_results": results
+    }), 200
+
+
+
+# def targeted_remind(entity_type, entity_id):
+#     valid = ["state", "region", "district", "group", "old_group"]
+#     if entity_type not in valid:
+#         return jsonify({"error": "Invalid entity type"}), 400
+
+#     emails = send_targeted_reminders(entity_type, entity_id)
+#     return jsonify({"sent_to": emails}), 200
