@@ -1,9 +1,22 @@
 from app.utils.email_service import send_email, EmailService
 from app.utils.whatsapp_service import whatsapp_service
+import os
 
 class NotificationService:
     def __init__(self):
-        self.email_service = EmailService()
+        # Get email configuration from environment variables or config
+        smtp_server = os.getenv('EMAIL_SERVER')
+        smtp_port = int(os.getenv('EMAIL_PORT', 587))
+        smtp_user = os.getenv('EMAIL_USERNAME')
+        smtp_password = os.getenv('EMAIL_PASSWORD')
+        
+        # Initialize EmailService with required parameters
+        self.email_service = EmailService(
+            smtp_server=smtp_server,
+            smtp_port=smtp_port,
+            smtp_user=smtp_user,
+            smtp_password=smtp_password
+        )
     
     def send_attendance_reminder(self, user, week, methods=['email', 'whatsapp']):
         """
@@ -24,7 +37,8 @@ class NotificationService:
         # Send email
         if 'email' in methods and user.email:
             try:
-                send_email(
+                # Use the email_service instance with send_email method
+                self.email_service.send_email(
                     to_email=user.email,
                     subject="Attendance Reminder",
                     template_name="attendance_reminder",
